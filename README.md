@@ -21,7 +21,14 @@ webカメラをPCに接続してください。
 ```
 npm install
 npm download:model
-npm copy:mediapipe
+```
+
+### webpack
+
+javascriptを書き換えた場合は実行してください。
+
+```
+npx webpack
 ```
 
 ### サーバー起動

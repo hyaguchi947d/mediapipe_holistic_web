@@ -4,16 +4,16 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "download:model": "curl -L -o public/models/holistic_landmarker.task https://storage.googleapis.com/mediapipe-models/holistic_landmarker/holistic_landmarker/float16/1/holistic_landmarker.task",
-    "copy:mediapipe": "shx mkdir -p public/mediapipe/wasm public/models && shx cp node_modules/@mediapipe/tasks-vision/vision_bundle.mjs public/mediapipe/ && shx cp -r node_modules/@mediapipe/tasks-vision/wasm public/mediapipe/",
-    "postinstall": "npm run copy:mediapipe"
+    "download:model": "curl -L -o public/models/holistic_landmarker.task https://storage.googleapis.com/mediapipe-models/holistic_landmarker/holistic_landmarker/float16/1/holistic_landmarker.task"
   },
   "author": "Hiroaki Yaguchi",
   "license": "Apache-2.0",
   "description": "Mediapipe Holistic Landmarker for web browser",
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",
+    "copy-webpack-plugin": "^14.0.0",
     "express": "^5.2.1",
-    "shx": "^0.4.0"
+    "webpack": "^5.110.3",
+    "webpack-cli": "^7.2.3"
   }
 }
