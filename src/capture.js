@@ -16,6 +16,36 @@ const canvasElement = document.getElementById('output_canvas');
 const ctx = canvasElement.getContext('2d');
 const drawingUtils = new DrawingUtils(ctx);
 
+// camera parameters
+const cameraWidth = 1280;
+const cameraHeight = 720;
+const fovElement = document.getElementById("fov");
+const cameraRotationDegrees = 0;
+
+function createCameraParams() {
+    // focal_lengthはfovをもとに計算する
+    let fov_rad = fovElement.value * Math.PI / 180.0;
+    let frame_diag = Math.sqrt(cameraWidth * cameraWidth + cameraHeight * cameraHeight);
+    let focal_length = frame_diag * 0.5 / Math.tan(fov_rad * 0.5);
+    let params = {
+        "focal_length": focal_length,
+        "frame_width": cameraWidth,
+        "frame_height": cameraHeight,
+        "rotation_degrees": cameraRotationDegrees,
+    };
+    return params;
+}
+
+let cameraParams = createCameraParams();
+fovElement.addEventListener("input", (event) => {
+    cameraParams = createCameraParams();
+})
+
+// gravity
+const gxElement = document.getElementById("gx");
+const gyElement = document.getElementById("gy");
+const gzElement = document.getElementById("gz");
+
 // カメラ一覧を取得してセレクトボックスに反映
 async function populateCameraList() {
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -42,12 +72,12 @@ async function startCamera(deviceId) {
         video: deviceId
         ? { 
             deviceId: { exact: deviceId },
-            width: 1280,
-            height: 720
+            width: cameraWidth,
+            height: cameraHeight
         }
         : { 
-            width: 1280,
-            height: 720
+            width: cameraWidth,
+            height: cameraHeight
         }, // deviceId未指定なら既定のカメラ
     };
 
@@ -78,11 +108,13 @@ async function main() {
     // HolisticLandmarkerを作成（VIDEOモード）
     const holisticLandmarker = await HolisticLandmarker.createFromOptions(vision, {
         baseOptions: {
-        modelAssetPath:
-        //   "https://storage.googleapis.com/mediapipe-models/holistic_landmarker/holistic_landmarker/float16/1/holistic_landmarker.task",
-            "./models/holistic_landmarker.task",
-        delegate: "GPU" // 対応環境がなければ "CPU" に
+            modelAssetPath:
+            //   "https://storage.googleapis.com/mediapipe-models/holistic_landmarker/holistic_landmarker/float16/1/holistic_landmarker.task",
+                "./models/holistic_landmarker.task",
+            delegate: "GPU" // 対応環境がなければ "CPU" に
+            // delegate: "CPU"  // TODO: GPUだとoutputFaceBlendshapesを設定するとエラー
         },
+        // outputFaceBlendshapes: true,
         runningMode: "VIDEO"
     });
 
@@ -90,8 +122,99 @@ async function main() {
     let lastVideoTime = -1;
     function renderLoop() {
         if (video.currentTime !== lastVideoTime) {
-            const result = holisticLandmarker.detectForVideo(video, performance.now());
+            let timestamp = performance.now();
+            let timestamp_ns = timestamp * 1e6;
+            const result = holisticLandmarker.detectForVideo(video, timestamp);
             // console.log(result); // poseLandmarks / faceLandmarks / leftHandLandmarks / rightHandLandmarks
+
+            // json変換
+            let json_msg = {
+                "camera_params": cameraParams,
+                "gravity": [
+                    gxElement.value,
+                    gyElement.value,
+                    gzElement.value,
+                ],
+                "gravity_stamp": timestamp_ns
+            };
+
+            if (result.faceBlendshapes && result.faceBlendshapes.length > 0) {
+                // TODO: 現状GPUでは動かない 
+                console.log(result.faceBlendshapes[0].categories);
+            }
+
+            if (result.faceLandmarks && result.faceLandmarks.length > 0) {
+                json_msg["face_landmarks"] = [];
+                const landmarks = result.faceLandmarks[0];
+                for (const landmark of landmarks) {
+                    let pt = {
+                        "x": landmark.x,
+                        "y": landmark.y,
+                        "z": landmark.z,
+                    };
+                    json_msg["face_landmarks"].push(pt);
+                }
+                json_msg["face_landmarks_stamp"] = timestamp_ns;
+            }
+
+            if (result.poseLandmarks && result.poseLandmarks.length > 0) {
+                json_msg["pose_landmarks"] = [];
+                const landmarks = result.poseLandmarks[0];
+                for (const landmark of landmarks) {
+                    let pt = {
+                        "x": landmark.x,
+                        "y": landmark.y,
+                        "z": landmark.z,
+                    };
+                    json_msg["pose_landmarks"].push(pt);
+                }
+                json_msg["pose_landmarks_stamp"] = timestamp_ns;
+            }
+
+            if (result.poseWorldLandmarks && result.poseWorldLandmarks.length > 0) {
+                json_msg["pose_world_landmarks"] = [];
+                const landmarks = result.poseWorldLandmarks[0];
+                for (const landmark of landmarks) {
+                    let pt = {
+                        "x": landmark.x,
+                        "y": landmark.y,
+                        "z": landmark.z,
+                        "visibility": landmark.visibility,
+                    };
+                    json_msg["pose_world_landmarks"].push(pt);
+                }
+                json_msg["pose_world_landmarks_stamp"] = timestamp_ns;
+            }
+
+            if (result.leftHandWorldLandmarks && result.leftHandWorldLandmarks.length > 0) {
+                json_msg["left_hand_world_landmarks"] = [];
+                const landmarks = result.leftHandWorldLandmarks[0];
+                for (const landmark of landmarks) {
+                    let pt = {
+                        "x": landmark.x,
+                        "y": landmark.y,
+                        "z": landmark.z,
+                    };
+                    json_msg["left_hand_world_landmarks"].push(pt);
+                }
+                json_msg["left_hand_world_landmarks_stamp"] = timestamp_ns;
+            }
+
+            if (result.rightHandWorldLandmarks && result.rightHandWorldLandmarks.length > 0) {
+                json_msg["right_hand_world_landmarks"] = [];
+                const landmarks = result.rightHandWorldLandmarks[0];
+                for (const landmark of landmarks) {
+                    let pt = {
+                        "x": landmark.x,
+                        "y": landmark.y,
+                        "z": landmark.z,
+                    };
+                    json_msg["right_hand_world_landmarks"].push(pt);
+                }
+                json_msg["right_hand_world_landmarks_stamp"] = timestamp_ns;
+            }
+
+            console.log(json_msg);
 
             // 描画は公式サンプルを参照
             // https://github.com/google-ai-edge/mediapipe-samples-web/blob/main/src/tasks/holistic-landmarker.ts#L61
@@ -135,6 +258,11 @@ async function main() {
                     drawingUtils.drawLandmarks(landmarks, { color: '#FF0000', lineWidth: 2 });
                 }
             }
+
+            // fps
+            let processTime = performance.now() - timestamp;
+            let processFPS = 1.0 / (processTime * 1e-3);
+            console.log(`${processFPS} FPS`);
 
             lastVideoTime = video.currentTime;
         }

@@ -21,7 +21,17 @@
   </style>
 </head>
 <body>
+    <!-- カメラ選択用 -->
     <select id="cameraSelect"></select>
+    <!-- カメラパラメータを推定するために必要 -->
+    <label for="fov">対角画角(度)</label>
+    <input type="number" name="fov" id="fov" value="78.0" />
+    <!-- カメラに対する重力方向 -->
+    <label for="gx">重力ベクトルの向き(X-right, Y-up, Z-front)</label>
+    <input type="number" name="gx" id="gx" value="0.0" />
+    <input type="number" name="gy" id="gy" value="9.8" />
+    <input type="number" name="gz" id="gz" value="0.0" />
+
     <div class="container">
         <video id="webcam" autoplay playsinline></video>
         <canvas id="output_canvas" width="1280" height="720"></canvas>
